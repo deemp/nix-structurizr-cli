@@ -1,21 +1,35 @@
-{ lib, stdenv, fetchFromGitHub, jdk, gradle_7, perl, writeText, runtimeShell, makeWrapper, tree }:
+{
+  lib,
+  stdenv,
+  fetchFromGitHub,
+  jdk,
+  gradle_7,
+  perl,
+  writeText,
+  makeWrapper,
+  tree,
+}:
 let
   gradle = gradle_7;
   pname = "structurizr-cli";
-  version = "1.30.0";
+  version = "2024.03.03";
 
   src = fetchFromGitHub {
     owner = "structurizr";
     repo = "cli";
     rev = "v${version}";
-    sha256 = "sha256-YJMuY0rpl8Q2twp/cd9GpmFkV4SXkIjIP3q0lTHaUzM=";
+    sha256 = "sha256-V3lqx0/gku0KdeTkLqlA3ANWAUqw09PvcTccyDNljQs=";
   };
-  
+
   deps = stdenv.mkDerivation {
     name = "${pname}-deps";
     inherit src;
 
-    nativeBuildInputs = [ jdk perl gradle ];
+    nativeBuildInputs = [
+      jdk
+      perl
+      gradle
+    ];
 
     buildPhase = ''
       export GRADLE_USER_HOME=$(mktemp -d);
@@ -32,7 +46,7 @@ let
 
     outputHashAlgo = "sha256";
     outputHashMode = "recursive";
-    outputHash = "sha256-wkOIMZJI4DajF2jCc0f9ZpLSL/+zBwVRqAbhctR0mgQ=";
+    outputHash = "sha256-4hnGPgbsZhUlZa3zH44Kg5IxtM11Bu7WhMfwZJZPji0=";
   };
 
   # Point to our local deps repo
@@ -61,12 +75,16 @@ let
       }
     }
   '';
-
-  
-in stdenv.mkDerivation rec {
+in
+stdenv.mkDerivation rec {
   inherit pname src version;
 
-  nativeBuildInputs = [ jdk gradle makeWrapper tree ];
+  nativeBuildInputs = [
+    jdk
+    gradle
+    makeWrapper
+    tree
+  ];
 
   buildPhase = ''
     runHook preBuild
@@ -75,33 +93,33 @@ in stdenv.mkDerivation rec {
     gradle -PVERSION=${version} --offline --no-daemon --info --init-script ${gradleInit} build -x test
 
     runHook postBuild
-    '';
+  '';
 
   installPhase = ''
     mkdir -p $out/bin
     mkdir -p $out/share/java
 
     tree build
-    install -Dm644 build/libs/${pname}-${version}.jar $out/share/java
-    install -Dm644 build/resources/main/application.properties $out/share/java
-    
+    install -Dm644 build/libs/${pname}.jar $out/share/java
+    install -Dm644 build/resources/main/build.properties $out/share/java
+
     classpath=$(find ${deps} -name "*.jar" -printf ':%h/%f');
     # create a wrapper that will automatically set the classpath
     # this should be the paths from the dependency derivation
     makeWrapper ${jdk}/bin/java $out/bin/${pname} \
-          --add-flags "-classpath $out/share/java/${pname}-${version}.jar:''${classpath#:}" \
-          --add-flags "-Dspring.config.location=$out/share/application.properties" \
+          --add-flags "-classpath $out/share/java/${pname}.jar:''${classpath#:}" \
+          --add-flags "-Dspring.config.location=$out/share/build.properties" \
           --add-flags "com.structurizr.cli.StructurizrCliApplication"
   '';
 
   meta = with lib; {
     description = "A command line utility for Structurizr.";
-    homepage = "https://github.com/structurizr/cli/tree/v1.30.0";
+    homepage = "https://github.com/structurizr/cli/tree/v2024.03.03";
     sourceProvenance = with sourceTypes; [
       fromSource
-      binaryBytecode  # deps
+      binaryBytecode # deps
     ];
-    # license = licenses.apache2;
+    license = licenses.asl20;
     platforms = platforms.all;
   };
 }
